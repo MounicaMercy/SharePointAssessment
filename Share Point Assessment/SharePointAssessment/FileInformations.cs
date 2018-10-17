@@ -120,7 +120,14 @@ namespace SharePointAssessment
                     //UpdateExcelSheet(clientcontext,dt, filename);
                 }
                 UploadFile(clientcontext, dt);             //Uploading File
-                Console.WriteLine(dt.Rows[0].Field<string>(4));
+                foreach (DataRow dataRow in dt.Rows)
+                {
+                    foreach (var item in dataRow.ItemArray)
+                    {
+                        Console.WriteLine(item);
+                    }
+                }
+                //Console.WriteLine(dt.Rows[0].Field<string>(4));
                 Console.ReadKey();
             }
         }
@@ -239,12 +246,14 @@ namespace SharePointAssessment
                 string path = row.Field<string>("File Path");    //Getting the coulmn-file path from data table
                 string fileName = Path.GetFileName(path);          //Getting the file name from the path
 
-                string CreatedBy = row.Field<string>("Created By");
+                string CreatedBy = row[3].ToString();
+
+                System.IO.FileInfo fileInfo = new System.IO.FileInfo(path);
+                string FileType = fileInfo.Extension;
 
                 try
                 {
-                    System.IO.FileInfo fileInfo = new System.IO.FileInfo(path);
-                    string FileType = fileInfo.Extension;
+                   
                     if (fileInfo.Exists)                                      //Checking if file exists or not
                         bytes = fileInfo.Length;                                  //read the file size
                     else                                                         // if the file not exit then status will be failed
