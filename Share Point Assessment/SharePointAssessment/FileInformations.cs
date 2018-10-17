@@ -116,36 +116,11 @@ namespace SharePointAssessment
                             }
                             dt.Rows.RemoveAt(0);
                         }
-
                     }
                     //UpdateExcelSheet(clientcontext,dt, filename);
                 }
-
-                Console.WriteLine(dt.Rows[0].Field<string>(1));
-
-                string path = dt.Rows[0].Field<string>(1);
-                
-                UploadFile(clientcontext,path);  //Call for Uploading File
-
-                //Displaying excel sheet info....
-
-                foreach (DataColumn datacol in dt.Columns)
-                {
-                    foreach (var item in datacol.ColumnName)
-                    {
-                        Console.Write("{0}", item);
-
-                    }
-                }
-                Console.WriteLine("\n");
-                foreach (DataRow dataRow in dt.Rows)
-                {
-                    foreach (var item in dataRow.ItemArray)
-                    {
-                        Console.Write("{0}\t", item);
-                    }
-                }
-
+                UploadFile(clientcontext, dt);             //Uploading File
+                Console.WriteLine(dt.Rows[0].Field<string>(4));
                 Console.ReadKey();
             }
         }
@@ -247,25 +222,71 @@ namespace SharePointAssessment
         //        }
         //    }
         //}
-        public static void UploadFile(ClientContext clientcontext, string path)
+        public static void UploadFile(ClientContext clientcontext, DataTable dt)
         {
+            bool flag = true;
+            long bytes = 0;
+            String Reason = "";
+            String UploadStatus = "";
+
             Web web = clientcontext.Web;
-            try
+            
+            List docs = clientcontext.Web.Lists.GetByTitle("Files");
+            clientcontext.ExecuteQuery();
+
+            foreach (DataRow row in dt.Rows)
             {
-               string fileName = Path.GetFileName(path);
-               List docs = clientcontext.Web.Lists.GetByTitle("Files");
-               clientcontext.ExecuteQuery();
-               FileCreationInformation file = new FileCreationInformation();
-               file.Content = System.IO.File.ReadAllBytes(path);
-               file.Url = fileName;
-               file.Overwrite = true;
-               File fileToUpload = docs.RootFolder.Files.Add(file);
-               clientcontext.Load(fileToUpload);
-               clientcontext.ExecuteQuery();
-            }
-            catch (Exception e)
-            {
-               Console.WriteLine(e.Message);
+                string path = row.Field<string>("File Path");    //Getting the coulmn-file path from data table
+                string fileName = Path.GetFileName(path);          //Getting the file name from the path
+
+                string CreatedBy = row.Field<string>("Created By");
+
+                try
+                {
+                    System.IO.FileInfo fileInfo = new System.IO.FileInfo(path);
+                    string FileType = fileInfo.Extension;
+                    if (fileInfo.Exists)                                      //Checking if file exists or not
+                        bytes = fileInfo.Length;                                  //read the file size
+                    else                                                         // if the file not exit then status will be failed
+                    {
+                        UploadStatus = "Failed";
+                        Reason = "File does not exists on given path";
+                        flag = false;
+                    }
+                    if (flag == true && (bytes < 10000000))                      //checking the file size before upload
+                    {
+                       
+                        //int depart = Convert.ToInt32(row[2]);
+
+                        FileCreationInformation file = new FileCreationInformation();
+                        file.Content = System.IO.File.ReadAllBytes(path);
+                        file.Url = fileName;
+                        file.Overwrite = true;
+                        File fileToUpload = docs.RootFolder.Files.Add(file);
+                        clientcontext.Load(fileToUpload);
+                        clientcontext.ExecuteQuery();
+                        Console.WriteLine("File Uploaded!!");
+
+                        ListItem ItemToBeUpdated = docs.GetItemById(1);
+                        ItemToBeUpdated["Created By"] = CreatedBy.ToString();
+                        ItemToBeUpdated["Type Of the File"] = FileType.ToString();
+                        ItemToBeUpdated.Update();
+                        clientcontext.ExecuteQuery();
+                    }
+                    else if (flag)
+                    {
+                        // Console.WriteLine("File Size is High");
+                       
+                        UploadStatus = "Failed";
+                        Reason = "File size is to high";
+                    }
+                }
+
+                catch (Exception e)
+                {
+                    Console.WriteLine("File Size is High");
+                    //Console.WriteLine(e.Message);
+                }
             }
         }
     }
